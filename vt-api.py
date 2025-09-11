@@ -10,8 +10,6 @@ def verificar_ip(ip):
     response = requests.get(url, headers=HEADERS)
 
     if response.status_code == 200:
-        # data = response.json()
-        # stats = data['data']['attributes']['last_analysis_stats']
         respose_json = response.json()
         data = respose_json['data']
         attributes = data['attributes']
@@ -22,7 +20,7 @@ def verificar_ip(ip):
         suspeitos = stats['suspicious']
         return maliciosos, suspeitos, owner, country
     else:
-        return None, None
+        return None, None, None, None
 
 def main():
     with open('ips-origem.txt', 'r') as f:
