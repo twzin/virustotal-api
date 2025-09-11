@@ -1,6 +1,4 @@
-import requests
-import time
-import csv
+import requests, time, csv
 
 API_KEY = 'a688af4d3094202a9caf7ac4bada1eb066ea318981487ceead3526e3ab939717'
 HEADERS = {
@@ -12,11 +10,17 @@ def verificar_ip(ip):
     response = requests.get(url, headers=HEADERS)
 
     if response.status_code == 200:
-        data = response.json()
-        stats = data['data']['attributes']['last_analysis_stats']
+        # data = response.json()
+        # stats = data['data']['attributes']['last_analysis_stats']
+        respose_json = response.json()
+        data = respose_json['data']
+        attributes = data['attributes']
+        stats = attributes['last_analysis_stats']
+        owner = attributes['as_owner']
+        country = attributes['country']
         maliciosos = stats['malicious']
         suspeitos = stats['suspicious']
-        return maliciosos, suspeitos
+        return maliciosos, suspeitos, owner, country
     else:
         return None, None
 
@@ -25,25 +29,32 @@ def main():
         ips = [line.strip() for line in f if line.strip()]
 
     with open('resultado.csv', 'w', newline='') as csvfile:
-        fieldnames = ['IP', 'Maliciosos', 'Suspeitos']
+        fieldnames = ['IP', 'Maliciosos', 'Suspeitos', 'Owner', 'Country']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
         for ip in ips:
-            maliciosos, suspeitos = verificar_ip(ip)
+            maliciosos, suspeitos, owner, country = verificar_ip(ip)
             if maliciosos is not None:
-                print(f"IP: {ip} | Maliciosos: {maliciosos} | Suspeitos: {suspeitos}")
+                if maliciosos >= 2:
+                    print(f"\33[31mIP: {ip}\033[0m | \33[31mMaliciosos: {maliciosos}\033[0m | Suspeitos: {suspeitos} | Owner: {owner} | Country: {country}")
+                else:
+                    print(f"IP: {ip} | Maliciosos: {maliciosos} | Suspeitos: {suspeitos} | Owner: {owner} | Country: {country}")
                 writer.writerow({
-                    'IP': ip,
-                    'Maliciosos': maliciosos,
-                    'Suspeitos': suspeitos
-                })
+                'IP': ip,
+                'Maliciosos': maliciosos,
+                'Suspeitos': suspeitos,
+                'Owner': owner,
+                'Country': country
+            })
             else:
                 print(f"Falha ao verificar IP: {ip}")
                 writer.writerow({
                     'IP': ip,
                     'Maliciosos': 'Erro',
-                    'Suspeitos': 'Erro'
+                    'Suspeitos': 'Erro',
+                    'Owner': 'Erro',
+                    'Country': 'Erro'
                 })
             time.sleep(15)
 
