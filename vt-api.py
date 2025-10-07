@@ -14,7 +14,7 @@ def args():
     parser.add_argument('-o', '--OUTPUT', type=str, default=None, help='Output file')
     return parser.parse_args()
 
-def verificar_hash(hash):
+def passa_hash(hash):
     url = f"https://www.virustotal.com/api/v3/files/{hash}"
     response = requests.get(url, headers=HEADERS)
     
@@ -32,7 +32,7 @@ def verificar_hash(hash):
         return None, None, None, None
     
 def sandbox_veredict(hash):
-    resultado = verificar_hash(hash)
+    resultado = passa_hash(hash)
     _, _, _, sandbox_veredict = resultado
 
     if sandbox_veredict is None:
@@ -55,12 +55,12 @@ def sandbox_veredict(hash):
     return None, None, None, None, None
 
 def consulta_hash(hash):
-    sha256, malicious, name, _ = verificar_hash(hash)
+    sha256, malicious, name, _ = passa_hash(hash)
     print(f"Hash: \33[31m{sha256}\033[0m | Mal Score: \33[31m{malicious}\033[0m | File Name: \33[31m{name}\033[0m")
     sandbox_veredict(hash)
 
 
-def verificar_ip(ip):
+def passa_ip(ip):
     url = f"https://www.virustotal.com/api/v3/ip_addresses/{ip}"
     response = requests.get(url, headers=HEADERS)
 
@@ -128,11 +128,14 @@ def consulta_ip(ip):
 if __name__ == "__main__":
     args = args()
 
+    if len(sys.argv) < 2:
+        print("Usage: python3 vt-api.py -h")
+        sys.exit(1)
+
     if args.IP:
         consulta_ip(args.IP)
     if args.HASH:
         consulta_hash(args.HASH)
-
     if args.IPLIST:
         if not args.OUTPUT:
             print("Coloque um nome para o arquivo de saida!")
