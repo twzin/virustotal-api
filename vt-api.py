@@ -1,6 +1,6 @@
 import requests, time, csv, argparse, sys
 
-API_KEY = 'a688af4d3094202a9caf7ac4bada1eb066ea318981487ceead3526e3ab939717'
+API_KEY = ''
 HEADERS = {
     'x-apikey': API_KEY
 }
