@@ -27,9 +27,9 @@ def passa_hash(hash):
         sha256 = attributes["sha256"]
         name = attributes["meaningful_name"]
         stats = attributes["last_analysis_stats"]
-        malicious = stats["malicious"]
+        maliciosos = stats["malicious"]
         sandbox_veredicts = attributes.get("sandbox_verdicts", {})
-        return sha256, malicious, name, sandbox_veredicts
+        return sha256, maliciosos, name, sandbox_veredicts
     else:
         return None, None, None, None
     
@@ -57,8 +57,8 @@ def sandbox_veredict(hash):
     return None, None, None, None, None
 
 def consulta_hash(hash):
-    sha256, malicious, name, _ = passa_hash(hash)
-    print(f"Hash: \33[31m{sha256}\033[0m | Mal Score: \33[31m{malicious}\033[0m | File Name: \33[31m{name}\033[0m")
+    sha256, maliciosos, name, _ = passa_hash(hash)
+    print(f"Hash: \33[31m{sha256}\033[0m | Mal Score: \33[31m{maliciosos}\033[0m | File Name: \33[31m{name}\033[0m")
     sandbox_veredict(hash)
 
 def consulta_lista_hash(lista_hash, arquivo_saida):
@@ -74,13 +74,13 @@ def consulta_lista_hash(lista_hash, arquivo_saida):
         writer.writeheader()
         
         for hash in hashes:
-            sha256, malicious, name, _ = passa_hash(hash)
-            if malicious is not None:
-                if malicious >= 2:
-                    print(f"Hash: \33[31m{sha256}\033[0m | Mal Score: \33[31m{malicious}\033[0m | File Name: \33[31m{name}\033[0m")
+            sha256, maliciosos, name, _ = passa_hash(hash)
+            if maliciosos is not None:
+                if maliciosos >= 2:
+                    print(f"Hash: \33[31m{sha256}\033[0m | Mal Score: \33[31m{maliciosos}\033[0m | File Name: \33[31m{name}\033[0m")
                     writer.writerow({
                     'Hash': sha256,
-                    'Score_Malicioso': malicious,
+                    'Score_Malicioso': maliciosos,
                     'File_Name': name
             })
             else:
