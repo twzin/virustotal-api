@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import requests, time, csv, argparse, sys
 
 API_KEY = ''
@@ -59,6 +61,39 @@ def consulta_hash(hash):
     print(f"Hash: \33[31m{sha256}\033[0m | Mal Score: \33[31m{malicious}\033[0m | File Name: \33[31m{name}\033[0m")
     sandbox_veredict(hash)
 
+def consulta_lista_hash(lista_hash, arquivo_saida):
+    with open(lista_hash, 'r') as f:
+        hashes = [line.strip() for line in f if line.strip()]
+
+    if not arquivo_saida.lower().endswith('.csv'):
+        arquivo_saida += '.csv'
+
+    with open(arquivo_saida, 'w', newline='') as csvfile:
+        fieldnames = ['Hash', 'Score_Malicioso', 'File_Name']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        
+        for hash in hashes:
+            sha256, malicious, name, _ = passa_hash(hash)
+            if malicious is not None:
+                if malicious >= 2:
+                    print(f"Hash: \33[31m{sha256}\033[0m | Mal Score: \33[31m{malicious}\033[0m | File Name: \33[31m{name}\033[0m")
+                    writer.writerow({
+                    'Hash': sha256,
+                    'Score_Malicioso': malicious,
+                    'File_Name': name
+            })
+            else:
+                print(f"Falha ao verificar hash: {sha256}")
+                writer.writerow({
+                    'Hash': "Erro",
+                    'Score_Malicioso': "Erro",
+                    'File_Name': "Erro"
+                })
+            time.sleep(15)
+
+    print(f"\nResultados salvos em {arquivo_saida}!")
+
 
 def passa_ip(ip):
     url = f"https://www.virustotal.com/api/v3/ip_addresses/{ip}"
@@ -90,7 +125,7 @@ def consulta_lista_ip(lista_ips, arquivo_saida):
         writer.writeheader()
 
         for ip in ips:
-            maliciosos, suspeitos, owner, country = verificar_ip(ip)
+            maliciosos, suspeitos, owner, country = passa_ip(ip)
             if maliciosos is not None:
                 if maliciosos >= 2:
                     print(f"\33[31mIP: {ip}\033[0m | \33[31mMaliciosos: {maliciosos}\033[0m | Suspeitos: {suspeitos} | Owner: {owner} | Country: {country}")
@@ -117,7 +152,7 @@ def consulta_lista_ip(lista_ips, arquivo_saida):
 
 
 def consulta_ip(ip):
-    maliciosos, suspeitos, owner, country = verificar_ip(ip)
+    maliciosos, suspeitos, owner, country = passa_ip(ip)
     if maliciosos is not None:
         if maliciosos >= 2:
             print(f"\33[31mIP: {ip}\033[0m | \33[31mMaliciosos: {maliciosos}\033[0m | Suspeitos: {suspeitos} | Owner: {owner} | Country: {country}")
@@ -141,3 +176,8 @@ if __name__ == "__main__":
             print("Coloque um nome para o arquivo de saida!")
             sys.exit(1)
         consulta_lista_ip(args.IPLIST, args.OUTPUT)   
+    if args.HASHLIST:
+        if not args.OUTPUT:
+            print("Coloque um nome para o arquivo de saida!")
+            sys.exit(1)
+        consulta_lista_hash(args.HASHLIST, args.OUTPUT) 
