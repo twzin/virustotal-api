@@ -9,14 +9,14 @@ HEADERS = {
 
 def args():
     parser = argparse.ArgumentParser(description="VTAPI")
-    parser.add_argument('-lip', '--IPLIST', type=str, help='Lista de IPs para consultar')
+    parser.add_argument('-iplist', '--IPLIST', type=str, help='Arquivo de lista de IPs para consultar')
     parser.add_argument('-ip', '--IP', type=str, help='IP para consultar')
-    parser.add_argument('-lhash', '--HASHLIST', type=str, help='Lista de HASHES para consultar')
+    parser.add_argument('-hashlist', '--HASHLIST', type=str, help='Arquivo de lista de HASHES para consultar')
     parser.add_argument('-hash', '--HASH', type=str, default=None, help='Hash para consultar')
-    parser.add_argument('-o', '--OUTPUT', type=str, default=None, help='Output file')
+    parser.add_argument('-o', '--OUTPUT', type=str, default=None, help='Arquivo de saida')
     return parser.parse_args()
 
-def passa_hash(hash):
+def send_hash(hash):
     url = f"https://www.virustotal.com/api/v3/files/{hash}"
     response = requests.get(url, headers=HEADERS)
     
@@ -27,18 +27,14 @@ def passa_hash(hash):
         sha256 = attributes["sha256"]
         name = attributes["meaningful_name"]
         stats = attributes["last_analysis_stats"]
-        maliciosos = stats["malicious"]
+        malicious = stats["malicious"]
         sandbox_veredicts = attributes.get("sandbox_verdicts", {})
-        return sha256, maliciosos, name, sandbox_veredicts
+        return sha256, malicious, name, sandbox_veredicts
     else:
         return None, None, None, None
     
-def sandbox_veredict(hash):
-    resultado = passa_hash(hash)
-    _, _, _, sandbox_veredict = resultado
-
-    if sandbox_veredict is None:
-        return None, None, None, None, None
+def check_sandbox(hash):
+    sandbox_veredict = send_hash(hash)[3]
 
     print("--- Resultados das Sandboxes ---")
     for sandbox_name, data in sandbox_veredict.items():
@@ -50,52 +46,51 @@ def sandbox_veredict(hash):
         print(f"    > {sandbox_name} ({category.upper()})")
         print(f"       - Classificacao: {classification}")
         print(f"       - Nomes do Malware: {malware_names}")
-
         if confidence != "N/A":
             print(f"       - Confianca: {confidence}%")
     print("-------------------------------")
-    return None, None, None, None, None
 
-def consulta_hash(hash):
-    sha256, maliciosos, name, _ = passa_hash(hash)
-    print(f"Hash: \33[31m{sha256}\033[0m | Mal Score: \33[31m{maliciosos}\033[0m | File Name: \33[31m{name}\033[0m")
-    sandbox_veredict(hash)
 
-def consulta_lista_hash(lista_hash, arquivo_saida):
-    with open(lista_hash, 'r') as f:
+def check_hash(hash):
+    sha256, malicious, name, _ = send_hash(hash)
+    print(f"Hash: \33[31m{sha256}\033[0m | Mal Score: \33[31m{malicious}\033[0m | File Name: \33[31m{name}\033[0m")
+    check_sandbox(hash)
+
+def check_hash_list(file_in, file_out):
+    with open(file_in, 'r') as f:
         hashes = [line.strip() for line in f if line.strip()]
 
-    if not arquivo_saida.lower().endswith('.csv'):
-        arquivo_saida += '.csv'
+    if not file_out.lower().endswith('.csv'):
+        file_out += '.csv'
 
-    with open(arquivo_saida, 'w', newline='') as csvfile:
+    with open(file_out, 'w', newline='') as csvfile:
         fieldnames = ['Hash', 'Score_Malicioso', 'File_Name']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         
         for hash in hashes:
-            sha256, maliciosos, name, _ = passa_hash(hash)
-            if maliciosos is not None:
-                if maliciosos >= 2:
-                    print(f"Hash: \33[31m{sha256}\033[0m | Mal Score: \33[31m{maliciosos}\033[0m | File Name: \33[31m{name}\033[0m")
+            sha256, malicious, name, _ = send_hash(hash)
+            if malicious is not None:
+                if malicious >= 2:
+                    print(f"Hash: \33[31m{sha256}\033[0m | Mal Score: \33[31m{malicious}\033[0m | File Name: \33[31m{name}\033[0m")
                     writer.writerow({
                     'Hash': sha256,
-                    'Score_Malicioso': maliciosos,
+                    'Score_Malicioso': malicious,
                     'File_Name': name
             })
             else:
                 print(f"Falha ao verificar hash: {sha256}")
                 writer.writerow({
-                    'Hash': "Erro",
-                    'Score_Malicioso': "Erro",
-                    'File_Name': "Erro"
+                    'Hash': "Error",
+                    'Score_Malicioso': "Error",
+                    'File_Name': "Error"
                 })
             time.sleep(15)
 
-    print(f"\nResultados salvos em {arquivo_saida}!")
+    print(f"\nResultados salvos em {file_out}!")
 
 
-def passa_ip(ip):
+def send_ip(ip):
     url = f"https://www.virustotal.com/api/v3/ip_addresses/{ip}"
     response = requests.get(url, headers=HEADERS)
 
@@ -106,35 +101,35 @@ def passa_ip(ip):
         stats = attributes['last_analysis_stats']
         owner = attributes['as_owner']
         country = attributes['country']
-        maliciosos = stats['malicious']
-        suspeitos = stats['suspicious']
-        return maliciosos, suspeitos, owner, country
+        malicious = stats['malicious']
+        suspicious = stats['suspicious']
+        return malicious, suspicious, owner, country
     else:
         return None, None, None, None
 
-def consulta_lista_ip(lista_ips, arquivo_saida):
-    with open(lista_ips, 'r') as f:
+def check_ip_list(file_in, file_out):
+    with open(file_in, 'r') as f:
         ips = [line.strip() for line in f if line.strip()]
 
-    if not arquivo_saida.lower().endswith('.csv'):
-        arquivo_saida += '.csv'
+    if not file_out.lower().endswith('.csv'):
+        file_out += '.csv'
 
-    with open(arquivo_saida, 'w', newline='') as csvfile:
-        fieldnames = ['IP', 'Maliciosos', 'Suspeitos', 'Owner', 'Country']
+    with open(file_out, 'w', newline='') as csvfile:
+        fieldnames = ['IP', 'Malicious', 'Suspicious', 'Owner', 'Country']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
         for ip in ips:
-            maliciosos, suspeitos, owner, country = passa_ip(ip)
-            if maliciosos is not None:
-                if maliciosos >= 2:
-                    print(f"\33[31mIP: {ip}\033[0m | \33[31mMaliciosos: {maliciosos}\033[0m | Suspeitos: {suspeitos} | Owner: {owner} | Country: {country}")
+            malicious, suspicious, owner, country = send_ip(ip)
+            if malicious is not None:
+                if malicious >= 2:
+                    print(f"\33[31mIP: {ip}\033[0m | \33[31mMalicious: {malicious}\033[0m | Suspicious: {suspicious} | Owner: {owner} | Country: {country}")
                 else:
-                    print(f"IP: {ip} | Maliciosos: {maliciosos} | Suspeitos: {suspeitos} | Owner: {owner} | Country: {country}")
+                    print(f"IP: {ip} | Malicious: {malicious} | Suspicious: {suspicious} | Owner: {owner} | Country: {country}")
                 writer.writerow({
                 'IP': ip,
-                'Maliciosos': maliciosos,
-                'Suspeitos': suspeitos,
+                'Malicious': malicious,
+                'Suspicious': suspicious,
                 'Owner': owner,
                 'Country': country
             })
@@ -142,23 +137,28 @@ def consulta_lista_ip(lista_ips, arquivo_saida):
                 print(f"Falha ao verificar IP: {ip}")
                 writer.writerow({
                     'IP': ip,
-                    'Maliciosos': 'Erro',
-                    'Suspeitos': 'Erro',
-                    'Owner': 'Erro',
-                    'Country': 'Erro'
+                    'Malicious': 'Error',
+                    'Suspicious': 'Error',
+                    'Owner': 'Error',
+                    'Country': 'Error'
                 })
             time.sleep(15)
-        print(f"Resultados salvos em {arquivo_saida}")
+        print(f"Resultados salvos em {file_out}")
 
 
-def consulta_ip(ip):
-    maliciosos, suspeitos, owner, country = passa_ip(ip)
-    if maliciosos is not None:
-        if maliciosos >= 2:
-            print(f"\33[31mIP: {ip}\033[0m | \33[31mMaliciosos: {maliciosos}\033[0m | Suspeitos: {suspeitos} | Owner: {owner} | Country: {country}")
+def check_ip(ip):
+    malicious, suspicious, owner, country = send_ip(ip)
+    if malicious is not None:
+        if malicious >= 2:
+            print(f"\33[31mIP: {ip}\033[0m | \33[31mMalicious: {malicious}\033[0m | Suspicious: {suspicious} | Owner: {owner} | Country: {country}")
         else:
-            print(f"IP: {ip} | Maliciosos: {maliciosos} | Suspeitos: {suspeitos} | Owner: {owner} | Country: {country}")
+            print(f"IP: {ip} | Malicious: {malicious} | Suspicious: {suspicious} | Owner: {owner} | Country: {country}")
     
+
+def no_output_exit(output):
+    if not output:
+            print("Coloque um nome para o arquivo de saida!")
+            sys.exit(1)
 
 if __name__ == "__main__":
     args = args()
@@ -168,16 +168,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     if args.IP:
-        consulta_ip(args.IP)
-    if args.HASH:
-        consulta_hash(args.HASH)
-    if args.IPLIST:
-        if not args.OUTPUT:
-            print("Coloque um nome para o arquivo de saida!")
-            sys.exit(1)
-        consulta_lista_ip(args.IPLIST, args.OUTPUT)   
-    if args.HASHLIST:
-        if not args.OUTPUT:
-            print("Coloque um nome para o arquivo de saida!")
-            sys.exit(1)
-        consulta_lista_hash(args.HASHLIST, args.OUTPUT) 
+        check_ip(args.IP)
+    elif args.HASH:
+        check_hash(args.HASH)
+    elif args.IPLIST:
+        no_output_exit(args.OUTPUT)
+        check_ip_list(args.IPLIST, args.OUTPUT)   
+    elif args.HASHLIST:
+        no_output_exit(args.OUTPUT)
+        check_hash_list(args.HASHLIST, args.OUTPUT) 
